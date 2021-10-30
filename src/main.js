@@ -2,30 +2,31 @@ import Web3 from 'web3'
 import { newKitFromWeb3 } from '@celo/contractkit'
 import BigNumber from "bignumber.js"
 import erc20Abi from "../contract/erc20.abi.json"
-import toolrentalabi from "../contract/toolrental.abi.json"
+import crowdfundingAbi from "../contract/crowdfunding.abi.json"
 
 const ERC20_DECIMALS = 18
 const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
-const trContractAddress = '0x0558e87dc28663E14178Aa5aF68bDFd6fd551511';
+const cfContractAddress = '0xF422624e01F75ccD6F341fdD239Bd2A2dd0Bf350';
 
 let kit
 let contract
-let tools = []
+let projects = []
 
 const connectCeloWallet = async function () {
     console.log("connecting celo")
   if (window.celo) {
     try {
       notification("⚠️ Please approve this DApp to use it.")
-      await window.celo.enable()
+      const celo = await window.celo.enable()
+      console.log('celo', celo);
       notificationOff()
       const web3 = new Web3(window.celo)
       kit = newKitFromWeb3(web3)
 
       const accounts = await kit.web3.eth.getAccounts()
-      kit.defaultAccount = accounts[0]
+      kit.defaultAccount = accounts[0];
 
-      contract = new kit.web3.eth.Contract(toolrentalabi, trContractAddress)
+      contract = new kit.web3.eth.Contract(crowdfundingAbi, cfContractAddress)
     } catch (error) {
       notification(`⚠️ ${error}.`)
     }
@@ -38,102 +39,82 @@ async function approve(_price) {
   const cUSDContract = new kit.web3.eth.Contract(erc20Abi, cUSDContractAddress)
 
   const result = await cUSDContract.methods
-    .approve(trContractAddress, _price)
+    .approve(cfContractAddress, _price)
     .send({ from: kit.defaultAccount })
   return result
+}
+
+async function addSuggestion() {
+  const suggestion = 'this is a pretty useful suggestion';
+  const confirm = window.prompt(suggest)
+
+  confirm == true ? console.log('confirmed', suggestion): console.log('rejected/other') ;
+  notification(`⌛ Adding "${params[0]}"...`)
+  try {
+    const result = await contract.methods
+      .addSuggestion(kit.defaultAccount, suggestion)
+      .send({ from: kit.defaultAccount })
+    console.log('launch result',result);
+  } catch (error) {
+    notification(`⚠️ ${error}.`)
+  }
+  notification(`🎉 You successfully added "${params[0]}".`)
+  getProjects()
 }
 
 const getBalance = async function () {
   const totalBalance = await kit.getTotalBalance(kit.defaultAccount)
   const cUSDBalance = totalBalance.cUSD.shiftedBy(-ERC20_DECIMALS).toFixed(2)
+  console.log('balance', cUSDBalance)
+  document.getElementById('balance').innerHTML = cUSDBalance;
   return cUSDBalance;
 }
 
 document
-  .querySelector("#newProductBtn")
+  .querySelector("#newProjectBtn")
   .addEventListener("click", async (e) => {
     const params = [
-      document.getElementById("newToolName").value,
-      document.getElementById("newImgUrl").value,
-      new BigNumber(document.getElementById("newPrice").value)
-      .shiftedBy(ERC20_DECIMALS)
-      .toString()
+      kit.defaultAccount,
+      document.getElementById("newDescription").value,
     ]
     notification(`⌛ Adding "${params[0]}"...`)
     try {
         const result = await contract.methods
-          .addTool(...params)
+          .addProject(...params)
           .send({ from: kit.defaultAccount })
-        console.log(result);
+        console.log('launch result',result);
       } catch (error) {
         notification(`⚠️ ${error}.`)
       }
       notification(`🎉 You successfully added "${params[0]}".`)
-      getTools()
+      getProjects()
   })
 
-  document
-  .querySelector("#employeeBtn")
-  .addEventListener("click", async (e) => {
-    const params = [
-      document.getElementById("newToolName").value,
-      document.getElementById("newImgUrl").value,
-      new BigNumber(document.getElementById("newPrice").value)
+
+document.querySelector("#projectList").addEventListener("click", async (e) => {
+  if (e.target.className.includes('supportBtn')) {
+    const index = e.target.id;
+    
+    const amount = new BigNumber(document.getElementById("supportAmount").value)
       .shiftedBy(ERC20_DECIMALS)
       .toString()
-    ]
-    notification(`⌛ Adding "${params[0]}"...`)
-    try {
-        const result = await contract.methods
-          .addTool(...params)
-          .send({ from: kit.defaultAccount })
-        console.log(result);
-      } catch (error) {
-        notification(`⚠️ ${error}.`)
-      }
-      notification(`🎉 You successfully added "${params[0]}".`)
-      getTools()
-  })
-
-document.querySelector("#marketplace").addEventListener("click", async (e) => {
-  if (e.target.className.includes("checkoutBtn")) {
-    const index = e.target.id
+    
     notification("⌛ Waiting for payment approval...")
     try {
-      await approve(tools[index].price)
+      await approve(amount);
     } catch (error) {
       notification(`⚠️ ${error}.`)
+      console.log(error);
     }
-    notification(`⌛ Awaiting payment for "${tools[index].name}"...`)
-    const duration = rentalDuration();
-    try {
-      
-      const result = await contract.methods
-        .checkoutTool(index, duration)
-        .send({ from: kit.defaultAccount });
-      console.log(result);
-      notification(`🎉 You successfully bought "${tools[index].name}".`)
-      getTools()
-      getBalance()
-    } catch (error) {
-        console.log(error)
-        notification(`⚠️ ${error}`)
-    }
-  }
-})
-
-document.querySelector("#marketplace").addEventListener("click", async (e) => {
-  if (e.target.className.includes("returnBtn")) {
-    const date = new Date();
-    const index = e.target.id
-    notification(`⌛ Awaiting payment for "${tools[index].name}"...`)
+    
+    notification(`⌛ Awaiting payment for "${projects[index].name}"...`)
     try {
       const result = await contract.methods
-        .returnTool(index, date.getTime())
-        .send({ from: kit.defaultAccount });
-      console.log(result);
-      notification(`🎉 You successfully returned "${tools[index].name}".`)
-      getTools()
+        .supportProject(index, amount)
+        .send({ value: amount, from: kit.defaultAccount });
+      console.log('Support Result:',result);
+      notification(`🎉 You successfully supported "${projects[index].name}".`)
+      getProjects()
       getBalance()
     } catch (error) {
         notification(`⚠️ ${error}.`)
@@ -141,77 +122,44 @@ document.querySelector("#marketplace").addEventListener("click", async (e) => {
   }
 })
 
-document.querySelector("#marketplace").addEventListener("click", async (e) => {
-  if (e.target.className.includes("lateFeeBtn")) {
-    const index = e.target.id
-    notification("⌛ Waiting for payment approval...")
-    try {
-      await approve(tools[index].price)
-    } catch (error) {
-      notification(`⚠️ ${error}.`)
-    }
-    notification(`⌛ Awaiting payment for "${tools[index].name}"...`)
-    const date = new Date();
-    try {
-      
-      const result = await contract.methods
-        .payFees(index, date.getTime())
-        .send({ from: kit.defaultAccount });
-      console.log(result);
-      notification(`🎉 You successfully paid fees for "${tools[index].name}".`)
-      getTools()
-      getBalance()
-    } catch (error) {
-        console.log(error)
-        notification(`⚠️ ${error.message}.`)
-    }
-  }
-})
 
-const getTools = async function() {
-  const _toolsLength = await contract.methods.getToolsLength().call()
-  const _tools = []
-  console.log("Tools: " + _toolsLength)
-  for (let i = 0; i < _toolsLength; i++) {
-      let _tool = new Promise(async (resolve, reject) => {
-        let p = await contract.methods.readTool(i).call()
+const getProjects = async function() {
+  const _projectsLength = await contract.methods.totalProjects().call()
+  const _projects = []
+  console.log("Projects: " + _projectsLength)
+  for (let i = 0; i < _projectsLength; i++) {
+      let _project = new Promise(async (resolve, reject) => {
+        let p = await contract.methods.readProject(i).call()
         resolve({
           index: i,
-          owner: p[0],
+          creator: p[0],
           name: p[1],
-          image: p[2],
-          price: new BigNumber(p[3]),
-          duration: p[4],
-          feePaid: p[5],
-          available: p[6]
+          description: p[2],
+          supporters: p[3],
+          goal: new BigNumber(p[4]),
+          invested: p[5],
+          suggestions: p[6]
         })
       })
-      _tools.push(_tool)
+      _projects.push(_project)
   }
-    tools = await Promise.all(_tools)
-    renderTools()
+    projects = await Promise.all(_projects)
+    renderProjects()
 }
 
-function renderTools() {
-  document.getElementById("marketplace").innerHTML = "";
-  tools.forEach((_tool) => {
+function renderProjects() {
+  document.getElementById("projectList").innerHTML = "";
+  projects.forEach((_project) => {
     const newDiv = document.createElement("div")
     newDiv.className = "col-md-4"
-    if (_tool.available) {
-      newDiv.innerHTML = checkoutTemplate(_tool);
-    } else {
-
-      if (date.getTime() > _tool.duration & !_tool.feePaid) {
-        newDiv.innerHTML = lateFeeTemplate(_tool);
-      } else {
-        newDiv.innerHTML = returnTemplate(_tool)
-      } 
-    }
-    document.getElementById("marketplace").appendChild(newDiv)
+    newDiv.innerHTML = projectTemplate(_project);
+    
+    document.getElementById("projectList").appendChild(newDiv)
   })
 }
 
 function notification(_text) {
+  console.log(_text);
   document.querySelector(".alert").style.display = "block"
   document.querySelector("#notification").textContent = _text
 }
@@ -220,104 +168,121 @@ function notificationOff() {
   document.querySelector(".alert").style.display = "none"
 }
 
-function checkoutTemplate(_product) {
+function projectTemplate(_project) {
+  let progress = (_project.invested / _project.goal) * 100
+  
   return `
-    <div class="card mb-4">
-      <img class="card-img-top" src="${_product.image}" alt="...">
-      <div class="card-body text-left p-4 position-relative">
+    <div class="card mb-4" >
+      <div class="card-body text-left  position-relative">
         <div class="translate-middle-y position-absolute top-0">
-        ${identiconTemplate(_product.owner)}
+        ${identiconTemplate(_project.creator)}
         </div>
-        <h2 class="card-title fs-4 fw-bold mt-2">${_product.name}</h2>
-        <p class="card-text mb-4" style="min-height: 82px">
-          Return by ${returnDate(rentalDuration())}             
+        <h2 class="card-title fs-4 fw-bold mt-2">${_project.name}</h2>
+        <p class="card-text " style="">
+          Goal <b>${_project.goal.shiftedBy(-ERC20_DECIMALS).toFixed(4)}</b> cUSD  [${progress}% achieved]        
         </p>
-        
-        <div class="d-grid gap-2">
-          <a class="btn btn-lg btn-outline-dark bg-success checkoutBtn-${_product.name} fs-6 p-3" id=${
-            _product.index
-          }>
-            Rent for ${_product.price.shiftedBy(-ERC20_DECIMALS).toFixed(6)} cUSD
-          </a>
-        </div>
-      </div>
-    </div>
-  `
-}
-
-function returnTemplate(_product) {
-  return `
-    <div class="card mb-4">
-      <img class="card-img-top" src="${_product.image}" alt="...">
-      <div class="card-body text-left p-4 position-relative">
-        <div class="translate-middle-y position-absolute top-0">
-        ${identiconTemplate(_product.owner)}
-        </div>
-        <h2 class="card-title fs-4 fw-bold mt-2">${_product.name}</h2>
-        <p class="card-text mb-4" style="min-height: 82px">
-          Return by ${returnDate(rentalDuration())}             
+        <progress  class="a-progress-bar a-progress-bar--green" value="${progress.toFixed(2)}" max="100"></progress>
+        <p class="card-text mb-4" >
+          ${_project.description}
         </p>
-        
-        <div class="d-grid gap-2">
-          <a class="btn btn-lg btn-outline-dark returnBtn bg-primary fs-6 p-3" id=${
-            _product.index
-          }>
-            Return 
-          </a>
-        </div>
-      </div>
-    </div>
-  `
-}
-
-function usedTemplate(_product) {
-    return `
-      <div class="card mb-4">
-        <img class="card-img-top" src="${_product.image}" alt="...">
-        <div class="card-body text-left p-4 position-relative">
-          <div class="translate-middle-y position-absolute top-0">
-          ${identiconTemplate(_product.owner)}
-          </div>
-          <h2 class="card-title fs-4 fw-bold mt-2">${_product.name}</h2>
-          <p class="card-text mb-4" style="min-height: 82px">
-            Return by ${returnDate(rentalDuration())}             
-          </p>
+        <p class="card-text mb-4" >
+          ${_project.supporters} Supporters ⚓️
+        </p>
+        <a class="btn btn-lg btn-outline-dark bg-success fs-6 p-3" id=${
+          _project.index
+        }
           
-          <div class="d-grid gap-2">
-            <a class="btn btn-lg btn-outline-dark usedBtn bg-secondary fs-6 p-3" id=${
-              _product.index
-            }>
-              Unavailable 
-            </a>
+          data-bs-toggle="modal"
+          data-bs-target="#supportModal"
+        >
+          <b>Support</b> ${_project.name} 
+        </a>
+
+        <!--Modal-->
+        <div
+          class="modal fade"
+          id="supportModal"
+          tabindex="-1"
+          aria-labelledby="supportModalLabel"
+          aria-hidden="true"
+        >
+        <div class="modal-dialog">
+        <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="supportModalLabel">Support</h5>
+          <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="form-row">
+              <div class="col">
+                <input
+                  type="text"
+                  id="supportAmount"
+                  class="form-control mb-2 "
+                  placeholder="Support in cUSD"
+                />
+              </div>
+            </div>
+          </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-light border"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="btn btn-dark supportBtn"
+              data-bs-dismiss="modal"
+              id="${_project.index}"
+            >
+              Thanks, Lets go! 🚀
+            </button>
+          </div>
+            </div>
           </div>
         </div>
-      </div>
-    `
-  }
-
-function lateFeeTemplate(_product) {
-  return `
-    <div class="card mb-4">
-      <img class="card-img-top" src="${_product.image}" alt="...">
-      <div class="card-body text-left p-4 position-relative">
-        <div class="translate-middle-y position-absolute top-0">
-        ${identiconTemplate(_product.owner)}
-        </div>
-        <h2 class="card-title fs-4 fw-bold mt-2">${_product.name}</h2>
-        <p class="card-text mb-4" style="min-height: 82px">
-          Return by ${returnDate(rentalDuration())}             
-        </p>
+        <!--/Modal-->
         
-        <div class="d-grid gap-2">
-          <a class="btn btn-lg btn-outline-dark bg-warning lateFeeBtn fs-6 p-3" id=${
-            _product.index
-          }>
-            Fees accrued ~ ${new BigNumber(_product.price / 10)
-                .shiftedBy(-ERC20_DECIMALS).toFixed(6)} cUSD
-          </a>
+        <div class="d-grid gap-1">
+          ${suggestionTemplate(_project)}
         </div>
       </div>
     </div>
+  `
+}
+
+function suggestionTemplate(_project) { 
+  
+  return`
+  <div class="container" style="
+    background: #fff;
+    border-radius: 8px;"
+  >  
+    <div class="row">
+      <div class="">
+        <div class="suggestion">
+          <p v-for="items in item" v-text="items"></p>
+        </div><!--End Comment-->
+      </div><!--End col -->
+    </div><!-- End row -->
+    <div class="row">
+      <div class="col-6">
+        <textarea type="text" class="input" placeholder="Leave feedback" v-model="newItem" @keyup.enter="${addSuggestion(_project)}"></textarea>
+        <button v-on:click="${addSuggestion(_project)}" class='primaryContained float-right' type="submit">Add Suggestion</button>
+      </div><!-- End col -->
+    </div><!--End Row -->
+  </div><!--End Container -->
   `
 }
 
@@ -342,21 +307,9 @@ function identiconTemplate(_address) {
 
 window.addEventListener('load', async () => {
   notification("⌛ Loading...")
-  console.log('loading before celo')
+  console.log('are we here')
   await connectCeloWallet()
   await getBalance()
-  await getTools()
+  await getProjects()
   notificationOff()
 });
-
-function rentalDuration() {
-  const duration = 1.2096 * 10e8; // 14 days
-  const today = new Date();
-  return today.getTime() + duration;
-}
-
-function returnDate(_time) {
-  const rb = new Date();
-  rb.setTime(_time);
-  return `${rb.getUTCMonth()+1}/${rb.getDate()}/${rb.getUTCFullYear()}`; 
-}
