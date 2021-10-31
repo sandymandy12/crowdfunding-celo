@@ -113,35 +113,6 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
   }
 })
 
-// Suggestions
-document.querySelector("#projectList").addEventListener("click", async (e) => {
-  if (e.target.className.includes('suggestBtn')) {
-    const index = e.target.id;
-    
-    const suggestion = document.getElementById("suggestionId").value
-    
-    const confirmed = alert('Are you sure?', suggestion);
-    console.log('confirmation', confirmed);
-
-    notification(`⌛ Sending feedback to "${projects[index].name}"...`)
-
-    if (confirmed) {
-      try {
-        const result = await contract.methods
-          .suggest(index, suggestion)
-          .send({ from: kit.defaultAccount });
-        console.log('Suggestion Result:',result);
-        notification(`🎉 You successfully supported "${projects[index].name}".`)
-        getProjects()
-        getBalance()
-      } catch (error) {
-          notification(`⚠️ ${error}.`)
-      }
-    }
-    
-  }
-})
-
 const getProjects = async function() {
   const _projectsLength = await contract.methods.totalProjects().call()
   const _projects = []
@@ -152,20 +123,6 @@ const getProjects = async function() {
     let _project = new Promise(async (resolve, reject) => {
       let p = await contract.methods.readProject(i).call()
       
-      const _suggestions = [];
-      for (let j = 0; j < p[6]; i++) {
-        let _suggestion = new Promise(async (resolve, reject) => {
-          let s = await contract.methods.getSuggestions(_project.id,i).call()
-          resolve({
-            index: i,
-            sender: s[0],
-            suggestion: s[1],
-            time: s[2],
-          })
-        })
-        _suggestions.push(_suggestion);
-      }
-
       resolve({
         index: i,
         creator: p[0],
@@ -174,7 +131,6 @@ const getProjects = async function() {
         supporters: p[3],
         goal: new BigNumber(p[4]),
         invested: p[5],
-        suggestions: _suggestions
       })
     })
     _projects.push(_project)
@@ -235,27 +191,11 @@ function projectTemplate(_project) {
           <b>Support</b> ${_project.name} 
         </a>
 
-        <a class="btn btn-sm btn-outline-dark bg-primary fs-6 p-3" id=${
-          _project.index
-        }
-          
-          data-bs-toggle="modal"
-          data-bs-target="#suggestModal"
-        >
-          <b>Feedback?</b>
-        </a>
 
         <!--Modal-->
         ${supportModal(_project.index)}
         <!--/Modal-->
 
-        <!--Modal-->
-        ${suggestModal(_project.index)}
-        <!--/Modal-->
-
-        <div class="d-grid gap-1">
-          ${suggestionTemplate(_project)}
-        </div>
       </div>
     </div>
   `
@@ -319,93 +259,6 @@ function supportModal(_index) {
   `
 }
 
-function suggestModal(_index) {
-  return`
-    <div
-      class="modal fade"
-      id="suggestModal"
-      tabindex="-1"
-      aria-labelledby="suggestModalLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog">
-        <div class="modal-content">
-
-          <div class="modal-header">
-            <h5 class="modal-title" id="suggestModalLabel">Support</h5>
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <form>
-              <div class="form-row">
-                <div class="col">
-                  <input
-                    type="text"
-                    id="suggestionId"
-                    class="form-control mb-2 "
-                    placeholder="Leave great feedback!"
-                  />
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-light border"
-              data-bs-dismiss="modal"
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              class="btn btn-dark suggestBtn"
-              data-bs-dismiss="modal"
-              id="${_index}"
-            >
-              Thanks, Lets go! 🚀
-            </button>
-          </div>
-        </div>
-      </div>  
-    </div>     
-  `
-}
-
-function suggestionTemplate(_project) { 
-  return`
-  <div class="container" style="
-    max-width: 640px;
-    margin: 30px auto;
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-  >  
-    <div class="row">
-      <div class="">
-        <div class="suggestion">
-          ${_project.suggestions.map((s) => {
-            let t = new Date();
-            t = t.setTime(s.time);
-            t.toda
-            return(
-              `<h2><i>${s.sender}</i><h2>
-              <p>${s.suggestion}</p>
-              <p>${t.toLocaleTimeString}</p>`
-            )
-          })}
-        </div><!--End Comment-->
-      </div><!--End col -->
-    </div><!-- End row -->
-    
-  </div><!--End Container -->
-  `
-}
 
 function identiconTemplate(_address) {
   const icon = blockies
