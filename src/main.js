@@ -6,12 +6,11 @@ import crowdfundingAbi from "../contract/crowdfunding.abi.json"
 
 const ERC20_DECIMALS = 18
 const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
-const cfContractAddress = '0xF422624e01F75ccD6F341fdD239Bd2A2dd0Bf350';
+const cfContractAddress = '0xe22bBe8Ab3159320e8BFb79238AD5eF646f4b3FA';
 
 let kit
 let contract
 let projects = []
-let suggestions = []
 
 const connectCeloWallet = async function () {
     console.log("connecting celo")
@@ -57,9 +56,13 @@ document
   .querySelector("#newProjectBtn")
   .addEventListener("click", async (e) => {
     const params = [
-      kit.defaultAccount,
+      document.getElementById("newProjectName").value,
       document.getElementById("newDescription").value,
+      new BigNumber(document.getElementById("newGoal").value)
+        .shiftedBy(ERC20_DECIMALS)
+        .toString()
     ]
+
     notification(`⌛ Adding "${params[0]}"...`)
     try {
         const result = await contract.methods
@@ -79,8 +82,8 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
     const index = e.target.id;
     
     const amount = new BigNumber(document.getElementById("supportAmount").value)
-      .shiftedBy(ERC20_DECIMALS)
-      .toString()
+    .shiftedBy(ERC20_DECIMALS)
+    .toString()
     
     notification("⌛ Waiting for payment approval...")
     try {
@@ -91,14 +94,19 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
     }
     
     notification(`⌛ Awaiting payment for "${projects[index].name}"...`)
+
     try {
       const result = await contract.methods
         .supportProject(index)
-        .send({ value: amount, from: kit.defaultAccount });
+        .send({  value: amount, from: kit.defaultAccount });
+
       console.log('Support Result:',result);
+
       notification(`🎉 You successfully supported "${projects[index].name}".`)
+
       getProjects()
       getBalance()
+
     } catch (error) {
         notification(`⚠️ ${error}.`)
     }
@@ -112,8 +120,8 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
     
     const suggestion = document.getElementById("suggestionId").value
     
-    const confirmed = prompt('Are you sure?', suggestion);
-    console.log('confirmation', confirm);
+    const confirmed = alert('Are you sure?', suggestion);
+    console.log('confirmation', confirmed);
 
     notification(`⌛ Sending feedback to "${projects[index].name}"...`)
 
@@ -420,7 +428,6 @@ function identiconTemplate(_address) {
 
 window.addEventListener('load', async () => {
   notification("⌛ Loading...")
-  console.log('are we here')
   await connectCeloWallet()
   await getBalance()
   await getProjects()
