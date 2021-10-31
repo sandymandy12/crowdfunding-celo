@@ -20,13 +20,6 @@ contract Crowdfunding {
     uint internal projectslength = 0;
     address internal cUsdTokenAddress = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1;
 
-    modifier isSupporter (uint _index) {
-        require(
-            supporters[_index][msg.sender] == true,
-            'must be a supporter'
-        );
-        _;
-    }
 
     struct Project {
         address payable creator;
@@ -88,7 +81,7 @@ contract Crowdfunding {
         );
     }
     
-    function supportProject(uint _index) public payable  {
+    function supportProject(uint _index) public payable {
         require(
           IERC20Token(cUsdTokenAddress).transferFrom(
             msg.sender,
@@ -98,14 +91,20 @@ contract Crowdfunding {
           "support did not go through."
         );
         
+        if (supporters[_index][msg.sender] != true) {
+            projects[_index].supporters ++;
+        }
         
-        projects[_index].supporters ++;
         projects[_index].invested += msg.value;
         supporters[_index][msg.sender] = true;
         
     }
     
-    function suggest(uint _index, string memory _comment) public isSupporter(_index) {
+    function suggest(uint _index, string memory _comment) public {
+        require(
+            supporters[_index][msg.sender] == true,
+            'must be a supporter'
+        );
         Project memory p = projects[_index];
         suggestions[_index][p.suggestions] = Suggest (
               msg.sender,
