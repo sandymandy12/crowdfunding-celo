@@ -73,7 +73,7 @@ contract Crowdfunding {
         );
     }
     
-    function supportProject(uint _index, uint _amount) public payable {
+    function supportProject(uint _index, uint _amount) public {
         require(
           IERC20Token(cUsdTokenAddress).transferFrom(
             msg.sender,
@@ -87,7 +87,7 @@ contract Crowdfunding {
             projects[_index].supporters ++;
         }
         
-        projects[_index].invested += msg.value;
+        projects[_index].invested += _amount;
         isSupporting[_index][msg.sender] = true;
         
     }
