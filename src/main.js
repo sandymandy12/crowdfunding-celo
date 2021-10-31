@@ -6,7 +6,7 @@ import crowdfundingAbi from "../contract/crowdfunding.abi.json"
 
 const ERC20_DECIMALS = 18
 const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
-const cfContractAddress = '0xe22bBe8Ab3159320e8BFb79238AD5eF646f4b3FA';
+const cfContractAddress = '0xEb0A9112722BC911756cb8a477d2358CaE946D11';
 
 let kit
 let contract

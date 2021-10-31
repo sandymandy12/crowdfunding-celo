@@ -26,31 +26,16 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "_projIdx",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_suggIdx",
+				"name": "_index",
 				"type": "uint256"
 			}
 		],
-		"name": "getSuggestions",
+		"name": "getSupporters",
 		"outputs": [
 			{
-				"internalType": "address",
-				"name": "_senders",
-				"type": "address"
-			},
-			{
-				"internalType": "string",
-				"name": "_suggestions",
-				"type": "string"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_time",
-				"type": "uint256"
+				"internalType": "address[]",
+				"name": "_supporters",
+				"type": "address[]"
 			}
 		],
 		"stateMutability": "view",
@@ -113,21 +98,8 @@
 				"type": "uint256"
 			},
 			{
-				"internalType": "string",
-				"name": "_comment",
-				"type": "string"
-			}
-		],
-		"name": "suggest",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "uint256",
-				"name": "_index",
+				"name": "_amount",
 				"type": "uint256"
 			}
 		],

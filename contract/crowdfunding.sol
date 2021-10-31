@@ -28,18 +28,13 @@ contract Crowdfunding {
         uint supporters;
         uint goal;
         uint invested;
-        uint suggestions;
     }
     
-    struct Suggest {
-        address sender;
-        string comment;
-        uint time;
-    }
     // the key is the project / projectslength
     // use Project.suggestions as length for mapping
-    mapping(uint => Suggest[]) internal suggestions;
-    mapping(uint => mapping(address => bool)) internal supporters;
+    mapping(uint => mapping(address => bool)) internal isSupporting;
+    mapping(uint => address[]) internal supporters; // key is project index
+    
 
     mapping (uint => Project) internal projects;
 
@@ -55,7 +50,6 @@ contract Crowdfunding {
             _description,
             0,
             _goal,
-            0,
             0
         );
         projectslength ++;
@@ -67,8 +61,7 @@ contract Crowdfunding {
         string memory _description,
         uint _supporters,
         uint _goal,
-        uint _invested,
-        uint _suggestions
+        uint _invested
     ) {
         return (
             projects[_index].creator,
@@ -76,44 +69,31 @@ contract Crowdfunding {
             projects[_index].description, 
             projects[_index].supporters, 
             projects[_index].goal,
-            projects[_index].invested,
-            projects[_index].suggestions
+            projects[_index].invested
         );
     }
     
-    function supportProject(uint _index) public payable {
+    function supportProject(uint _index, uint _amount) public payable {
         require(
           IERC20Token(cUsdTokenAddress).transferFrom(
             msg.sender,
             projects[_index].creator,
-            msg.value
+            _amount
           ),
           "support did not go through."
         );
         
-        if (supporters[_index][msg.sender] != true) {
+        if (isSupporting[_index][msg.sender] != true) {
             projects[_index].supporters ++;
         }
         
         projects[_index].invested += msg.value;
-        supporters[_index][msg.sender] = true;
+        isSupporting[_index][msg.sender] = true;
         
     }
     
-    function suggest(uint _index, string memory _comment) public {
-        require(
-            supporters[_index][msg.sender] == true,
-            'must be a supporter'
-        );
-        Project memory p = projects[_index];
-        suggestions[_index][p.suggestions] = Suggest (
-              msg.sender,
-              _comment,
-              block.timestamp
-        );
-        
-        p.suggestions ++;
-        
+    function getSupporters(uint _index) public view returns(address[] memory _supporters) {
+        return supporters[_index];
     }
     
     function totalProjects() public view returns (uint) {
@@ -121,12 +101,4 @@ contract Crowdfunding {
     }
     
     
-    function getSuggestions(uint _projIdx, uint _suggIdx) public view returns(
-        address _senders,
-        string memory _suggestions,
-        uint _time
-        ){
-        Suggest memory sugg = suggestions[_projIdx][_suggIdx];
-        return (sugg.sender, sugg.comment, sugg.time);
-    }
 }
