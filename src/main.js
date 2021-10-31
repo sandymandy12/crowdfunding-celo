@@ -6,7 +6,7 @@ import crowdfundingAbi from "../contract/crowdfunding.abi.json"
 
 const ERC20_DECIMALS = 18
 const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
-const cfContractAddress = '0xEb0A9112722BC911756cb8a477d2358CaE946D11';
+const cfContractAddress = '0x1a8ED52B9609b72625F1D3BC3aD06eE6E56bC948';
 
 let kit
 let contract
@@ -84,6 +84,11 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
     const amount = new BigNumber(document.getElementById("supportAmount").value)
     .shiftedBy(ERC20_DECIMALS)
     .toString()
+
+    const params = [
+      index,
+      amount
+    ]
     
     notification("⌛ Waiting for payment approval...")
     try {
@@ -97,8 +102,8 @@ document.querySelector("#projectList").addEventListener("click", async (e) => {
 
     try {
       const result = await contract.methods
-        .supportProject(index)
-        .send({  value: amount, from: kit.defaultAccount });
+        .supportProject(...params)
+        .send({ from: kit.defaultAccount });
 
       console.log('Support Result:',result);
 
@@ -258,7 +263,6 @@ function supportModal(_index) {
     </div>     
   `
 }
-
 
 function identiconTemplate(_address) {
   const icon = blockies
