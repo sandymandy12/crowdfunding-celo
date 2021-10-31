@@ -33,7 +33,9 @@ contract Crowdfunding {
     // the key is the project / projectslength
     // use Project.suggestions as length for mapping
     mapping(uint => mapping(address => bool)) internal isSupporting;
+    mapping(uint => mapping(address => uint)) internal investAmount;
     mapping(uint => address[]) internal supporters; // key is project index
+    
     
 
     mapping (uint => Project) internal projects;
@@ -94,6 +96,10 @@ contract Crowdfunding {
     
     function getSupporters(uint _index) public view returns(address[] memory _supporters) {
         return supporters[_index];
+    }
+    
+    function amountSupported(uint _index, address _addr) public view returns(uint _amount) {
+        return investAmount[_index][_addr];
     }
     
     function totalProjects() public view returns (uint) {
