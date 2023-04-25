@@ -40,6 +40,9 @@ contract Crowdfunding {
 
     mapping (uint => Project) internal projects;
 
+    event ProjectAdded(address indexed creator, string name, string description, uint goal);
+    event SupportAdded(uint indexed index, address indexed supporter, uint amount);
+
     function addProject(
         string memory _name,
         string memory _description,
@@ -55,6 +58,8 @@ contract Crowdfunding {
             0
         );
         projectslength ++;
+        emit ProjectAdded(msg.sender, _name, _description, _goal);
+
     }
 
     function readProject(uint _index) public view returns (
@@ -65,17 +70,22 @@ contract Crowdfunding {
         uint _goal,
         uint _invested
     ) {
-        return (
-            projects[_index].creator,
-            projects[_index].name, 
-            projects[_index].description, 
-            projects[_index].supporters, 
-            projects[_index].goal,
-            projects[_index].invested
-        );
+        Project storage project = projects[_index];
+    return (
+        project.creator,
+        project.name, 
+        project.description, 
+        project.supporters, 
+        project.goal,
+        project.invested
+    );
     }
     
     function supportProject(uint _index, uint _amount) public {
+        require(
+            IERC20Token(cUsdTokenAddress).balanceOf(msg.sender) >= _amount,
+            "Insufficient balance."
+        );
         require(
           IERC20Token(cUsdTokenAddress).transferFrom(
             msg.sender,
@@ -85,12 +95,17 @@ contract Crowdfunding {
           "support did not go through."
         );
         
-        if (isSupporting[_index][msg.sender] != true) {
+        if (!isSupporting[_index][msg.sender]) {
             projects[_index].supporters ++;
+            isSupporting[_index][msg.sender] = true;
+            supporters[_index].push(msg.sender);
+            investAmount[_index][msg.sender] += _amount;
         }
         
         projects[_index].invested += _amount;
-        isSupporting[_index][msg.sender] = true;
+
+        emit SupportAdded(_index, msg.sender, _amount);
+        
         
     }
     
@@ -104,7 +119,5 @@ contract Crowdfunding {
     
     function totalProjects() public view returns (uint) {
         return (projectslength);
-    }
-    
-    
+    }  
 }
